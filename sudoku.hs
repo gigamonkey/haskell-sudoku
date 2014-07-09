@@ -4,35 +4,24 @@ import Data.List
 import Data.Maybe
 import System.Environment
 import System.IO
-import qualified Data.Set as Set
 
 type Square = Int
 type Digit  = Char
 type Board  = Array Square (Maybe Char)
 
-digits = "123456789"
+digits  = "123456789"
+squares = [0..80]
 
-emptyBoard :: Board
-emptyBoard = listArray (0, 80) [ Nothing | _ <- [0..80] ]
-
-rows  = [ [ r*9 + c | c <- [0..8] ] | r <- [0..8] ]
-cols  = [ [ r*9 + c | r <- [0..8] ] | c <- [0..8] ]
-boxes = [ [ r*9 + c | r <- [rs..rs+2], c <- [cs..cs+2] ] | rs <- [0,3,6], cs <- [0,3,6] ]
-
-squares   = [0..80]
+rows      = [ [ r*9 + c | c <- [0..8] ] | r <- [0..8] ]
+cols      = [ [ r*9 + c | r <- [0..8] ] | c <- [0..8] ]
+boxes     = [ [ r*9 + c | r <- [rs..rs+2], c <- [cs..cs+2] ] | rs <- [0,3,6], cs <- [0,3,6] ]
 all_units = rows ++ cols ++ boxes
-units     = [ [ u | u <- all_units, elem s u ] | s <- squares ]
-peers     = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 
--- To and from textual representation
+units = [ [ u | u <- all_units, elem s u ] | s <- squares ]
+peers = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 
-square '.' = Nothing
-square d   = Just(d)
 
-unsquare Nothing = '.'
-unsquare (Just d) = d
-
-fromText = map square . filter (`elem` ('.':digits))
+-- To and from textual representation --------------------------------
 
 givens :: [Char] -> Board
 givens text = listArray (0, 80) (fromText text)
@@ -40,19 +29,22 @@ givens text = listArray (0, 80) (fromText text)
 board :: [Char] -> Maybe Board
 board text = Just (givens text)
 
+oneline :: Board -> [Char]
 oneline = map unsquare . elems
 
--- Solving code
+square c = if c == '.' then Nothing else Just c
+unsquare = fromMaybe '.'
+fromText = map square . filter (`elem` ('.':digits))
 
--- The main function
+
+-- Solving code ------------------------------------------------------
+
 solve :: Maybe Board -> Maybe Board
-
 solve board = do
   b <- board
   maybe board (search b digits) (emptySquare b)
 
 search :: Board -> [Digit] -> Square -> Maybe Board
-
 search b digits s =
     case digits of
       d:ds ->
@@ -62,12 +54,15 @@ search b digits s =
           where tryNextDigit = search b ds s
       [] -> Nothing
 
+
 emptySquare b = listToMaybe $ map fst $ filter (isNothing . snd) $ assocs b
 
-assign b s d = if inPeers b s d then Nothing else Just (b // [(s, Just d)])
+assign b s d  = if inPeers b s d then Nothing else Just (b // [(s, Just d)])
 
 inPeers b s d = any inPeer (peers !! s)
     where inPeer p = maybe False (d==) (b ! p)
+
+-- Main --------------------------------------------------------------
 
 main = do
   args <- getArgs
