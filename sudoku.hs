@@ -1,5 +1,6 @@
 import Control.Applicative
-import Data.Array
+import Control.Monad
+import Data.Array -- switch to Data.Vector
 import Data.List
 import Data.Maybe
 import System.Environment
@@ -42,7 +43,9 @@ fromText = map square . filter (`elem` ('.':digits))
 solve :: Maybe Board -> Maybe Board
 solve board = do
   b <- board
-  maybe board (search b digits) (emptySquare b)
+  case emptySquare b of
+    Nothing -> board
+    Just s  -> search b digits s
 
 search :: Board -> [Digit] -> Square -> Maybe Board
 search b digits s =
@@ -53,7 +56,6 @@ search b digits s =
             next    -> solve next <|> tryNextDigit
           where tryNextDigit = search b ds s
       [] -> Nothing
-
 
 emptySquare b = listToMaybe $ map fst $ filter (isNothing . snd) $ assocs b
 
@@ -66,12 +68,9 @@ inPeers b s d = any inPeer (peers !! s)
 
 main = do
   args <- getArgs
-  emit args
-  where emit (a:as) = do
-          puzzle <- readFile a
-          putStrLn $ oneline (givens puzzle)
-          putStrLn $ case solve (board puzzle) of
-                       Nothing -> "No solution."
-                       Just b -> oneline b
-          emit as
-        emit [] = do return ()
+  forM_ args $ \a -> do
+         puzzle <- readFile a
+         putStrLn $ oneline (givens puzzle)
+         putStrLn $ case solve (board puzzle) of
+                      Nothing -> "No solution."
+                      Just b -> oneline b
