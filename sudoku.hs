@@ -1,6 +1,7 @@
 import Control.Applicative
 import Control.Monad
-import Data.Array -- switch to Data.Vector
+import qualified Data.Vector as V
+import Data.Vector (Vector, indexed, fromList, toList, (//), (!?), (!))
 import Data.List
 import Data.Maybe
 import System.Environment
@@ -8,7 +9,9 @@ import System.IO
 
 type Square = Int
 type Digit  = Char
-type Board  = Array Square (Maybe Char)
+type Board  = Vector (Maybe Char)
+
+-- Some useful sets of indices ---------------------------------------
 
 digits  = "123456789"
 squares = [0..80]
@@ -21,17 +24,16 @@ all_units = rows ++ cols ++ boxes
 units = [ [ u | u <- all_units, elem s u ] | s <- squares ]
 peers = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 
-
 -- To and from textual representation --------------------------------
 
 givens :: [Char] -> Board
-givens text = listArray (0, 80) (fromText text)
+givens = fromList . fromText
 
 board :: [Char] -> Maybe Board
 board text = Just (givens text)
 
 oneline :: Board -> [Char]
-oneline = map unsquare . elems
+oneline = map unsquare . toList
 
 square c = if c == '.' then Nothing else Just c
 unsquare = fromMaybe '.'
@@ -57,12 +59,12 @@ search b digits s =
           where tryNextDigit = search b ds s
       [] -> Nothing
 
-emptySquare b = listToMaybe $ map fst $ filter (isNothing . snd) $ assocs b
+emptySquare b = (V.map fst $ V.filter (isNothing . snd) $ indexed b) !? 0
 
 assign b s d  = if inPeers b s d then Nothing else Just (b // [(s, Just d)])
 
 inPeers b s d = any inPeer (peers !! s)
-    where inPeer p = maybe False (d==) (b ! p)
+    where inPeer p = maybe False (d ==) (b ! p)
 
 -- Main --------------------------------------------------------------
 
