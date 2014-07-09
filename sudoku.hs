@@ -46,25 +46,24 @@ oneline = map unsquare . elems
 
 -- The main function
 solve :: Maybe Board -> Maybe Board
-solve Nothing  = Nothing
-solve (Just b) = search (Just b) (emptySquare b) digits
 
-search :: Maybe Board -> Maybe Square -> [Digit] -> Maybe Board
-search Nothing _ _              = Nothing -- dead end in assigment
-search (Just _) (Just _)  []    = Nothing -- ran out of digits to try
-search (Just b) Nothing _       = Just b  -- solved it!
-search (Just b) (Just s) (d:ds) =
-    case assign b s d of
-      Nothing -> tryNextDigit
-      next    -> nextStep next
-    where tryNextDigit = search (Just b) (Just s) ds
-          nextStep b'  = solve b' <|> tryNextDigit
+solve board = do
+  b <- board
+  maybe board (search b digits) (emptySquare b)
 
--- Get an empty square to try filling.
+search :: Board -> [Digit] -> Square -> Maybe Board
+
+search b digits s =
+    case digits of
+      d:ds ->
+          case assign b s d of
+            Nothing -> tryNextDigit
+            next    -> solve next <|> tryNextDigit
+          where tryNextDigit = search b ds s
+      [] -> Nothing
+
 emptySquare b = listToMaybe $ map fst $ filter (isNothing . snd) $ assocs b
 
--- Assign a given digit to the given square. Return Nothing if that
--- leads to an immediate contradiction.
 assign b s d = if inPeers b s d then Nothing else Just (b // [(s, Just d)])
 
 inPeers b s d = any inPeer (peers !! s)
