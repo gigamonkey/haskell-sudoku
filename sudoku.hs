@@ -57,7 +57,7 @@ sideBySide g b =
     intercalate "\n" [ l1 ++ space ++ l2 | (l1, l2) <- zip (lines (grid g)) (lines (grid b)) ]
         where space = replicate 10 ' '
 
-squareText :: S.Set Char -> Char
+squareText :: S.Set Digit -> Char
 squareText s = if S.size s == 1 then head (S.toList s) else '.'
 
 -- Solving code ------------------------------------------------------
