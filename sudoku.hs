@@ -58,7 +58,7 @@ fromText = filter (`elem` ('.':digits))
 solve :: Maybe Board -> Maybe Board
 solve board = do
   b <- board
-  case emptySquare b of
+  case isEmptySquare b of
     Nothing -> board
     Just s  -> search b digits s
 
@@ -72,30 +72,21 @@ search b digits s =
           where tryNextDigit = search b ds s
       [] -> Nothing
 
-emptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
+isEmptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
 
-assign :: Board -> Square -> Digit -> Maybe Board
 assign b s d = set (Just b) (s, d)
 
-set :: Maybe Board -> (Square, Digit) -> Maybe Board
 set b (s, d) = foldl eliminate b otherDigits
     where otherDigits = [ (s, d') | d' <- S.toList ((fromJust b) ! s), d' /= d ]
 
-eliminate :: Maybe Board -> (Square, Digit) -> Maybe Board
-eliminate mb (s, d) = do
-  b   <- mb
-  b'  <- removeDigit b s d
-  b'' <- propagateAssignment b' s
-  propagateToOnlyPlace b'' s d
+eliminate mb (s, d) = mb >>= removeDigit s d >>= propagateAssignment s >>= propagateToOnlyPlace s d
 
-removeDigit :: Board -> Square -> Digit -> Maybe Board
-removeDigit b s d =
+removeDigit s d b =
     if noDigits withoutD then Nothing else Just (b // [(s, withoutD)])
         where noDigits = S.null
               withoutD = S.delete d (b ! s)
 
-propagateAssignment :: Board -> Square -> Maybe Board
-propagateAssignment b s
+propagateAssignment s b
     | oneDigit = eliminateFromPeers theDigit
     | otherwise = Just b
     where oneDigit = S.size (b ! s) == 1
@@ -103,8 +94,7 @@ propagateAssignment b s
           eliminateFromPeers d = foldl eliminate (Just b) [ (p, d) | p <- peersWith d ]
           peersWith d = [ p | p <- (peers !! s), canTake b p d ]
 
-propagateToOnlyPlace :: Board -> Square -> Digit -> Maybe Board
-propagateToOnlyPlace b s d = foldl propagate (Just b) (units !! s)
+propagateToOnlyPlace s d b = foldl propagate (Just b) (units !! s)
     where propagate Nothing _ = Nothing
           propagate (Just b') u =
               case places b' d u of
