@@ -67,9 +67,9 @@ solve b = case emptySquare b of
             Just s  -> tryDigits b s (S.toList (b ! s))
 
 emptySquare b =
-    if (V.null nonEmpty) then Nothing else Just (fst (V.minimumBy setSize nonEmpty))
-        where nonEmpty = V.filter (\(i, s) -> S.size s > 1) $ indexed b
-              setSize (_, s1) (_, s2) = compare (S.size s1) (S.size s2)
+    if (V.null empties) then Nothing else Just (fst (V.minimumBy setSize empties))
+        where empties     = V.filter (\(i, s) -> S.size s > 1) $ indexed b
+              setSize a b = compare (S.size (snd a)) (S.size (snd b))
 
 tryDigits b s [] = Nothing
 tryDigits b s (d:ds) =
