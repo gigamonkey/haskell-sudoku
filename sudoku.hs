@@ -42,9 +42,21 @@ board text = foldl set (Just blankBoard) (givens text)
 givensBoard :: Givens -> Board
 givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
 
+grid :: Board -> [Char]
+grid b = intercalate divider [ band b i | i <- [0..2] ]
+    where divider         = "\n------+-------+------\n"
+          band b i        = intercalate "\n" [ row b r | r <- [i*3..(i*3)+2] ]
+          row b r         = intercalate " | " [ row_chunk b r c | c <- [0, 3, 6] ]
+          row_chunk b r c = intercalate " " [ [squareText (b ! s)] | s <- (take 3 (drop c (rows !! r))) ]
+
 oneline :: Board -> [Char]
 oneline = map squareText . toList
 
+sideBySide :: Board -> Board -> [Char]
+sideBySide g b =
+    intercalate "\n" [ l1 ++ "          " ++ l2 | (l1, l2) <- zip (lines (grid g)) (lines (grid b)) ]
+
+squareText :: S.Set Char -> Char
 squareText s = if S.size s == 1 then head (S.toList s) else '.'
 
 -- Solving code ------------------------------------------------------
@@ -103,9 +115,9 @@ main = do
   args <- getArgs
   forM_ args $ \a -> do
          puzzle <- readFile a
-         putStrLn $ oneline $ givensBoard $ givens puzzle
          putStrLn $ case board puzzle of
                       Nothing -> "Not a legal puzzle."
                       Just p -> case solve p of
                                   Nothing -> "No solution."
-                                  Just b -> oneline b
+                                  Just b -> sideBySide (givensBoard (givens puzzle)) b
+         putStrLn ""
