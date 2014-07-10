@@ -1,20 +1,29 @@
+import Debug.Trace (trace)
+
+
 import Control.Applicative
 import Control.Monad
-import qualified Data.Vector as V
-import Data.Vector (Vector, indexed, fromList, toList, (//), (!?), (!))
 import Data.List
 import Data.Maybe
+import Data.Vector (Vector, indexed, fromList, toList, (//), (!?), (!))
 import System.Environment
 import System.IO
 
+import qualified Data.Set as S
+import qualified Data.Vector as V
+
 type Square = Int
 type Digit  = Char
-type Board  = Vector (Maybe Char)
+type Givens = [(Square, Digit)]
+type Board  = Vector (S.Set Digit)
 
 -- Some useful sets of indices ---------------------------------------
 
 digits  = "123456789"
 squares = [0..80]
+
+blankSquare = S.fromList digits
+blankBoard  = V.replicate 81 blankSquare
 
 rows      = [ [ r*9 + c | c <- [0..8] ] | r <- [0..8] ]
 cols      = [ [ r*9 + c | r <- [0..8] ] | c <- [0..8] ]
@@ -26,18 +35,22 @@ peers = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 
 -- To and from textual representation --------------------------------
 
-givens :: [Char] -> Board
-givens = fromList . fromText
+givens :: [Char] -> Givens
+givens text = [ (i, d) | (i, d) <- (zip [0..] (fromText text)), d `elem` digits ]
+
+givensBoard :: Givens -> Board
+givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
 
 board :: [Char] -> Maybe Board
-board text = Just (givens text)
+board text = foldl setDigit (Just blankBoard) (givens text)
 
 oneline :: Board -> [Char]
 oneline = map unsquare . toList
 
 square c = if c == '.' then Nothing else Just c
-unsquare = fromMaybe '.'
-fromText = map square . filter (`elem` ('.':digits))
+unsquare s = if S.size s == 1 then (S.toList s) !! 0 else '.'
+
+fromText = filter (`elem` ('.':digits))
 
 
 -- Solving code ------------------------------------------------------
@@ -59,12 +72,24 @@ search b digits s =
           where tryNextDigit = search b ds s
       [] -> Nothing
 
-emptySquare b = (V.map fst $ V.filter (isNothing . snd) $ indexed b) !? 0
+emptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
 
-assign b s d  = if inPeers b s d then Nothing else Just (b // [(s, Just d)])
+assign :: Board -> Square -> Digit -> Maybe Board
+assign b s d = if inPeers b s d then Nothing else setDigit (Just b) (s, d)
 
-inPeers b s d = any inPeer (peers !! s)
-    where inPeer p = maybe False (d ==) (b ! p)
+inPeers b s d = any inPeer [ (b!p) | p <- (peers !! s) ]
+    where inPeer p = S.size p == 1 && S.member d p
+
+
+setDigit :: Maybe Board -> (Square, Digit) -> Maybe Board
+setDigit b (s, d) = foldl eliminateDigit b otherDigits
+    where otherDigits = [ (s, d') | d' <- S.toList ((fromJust b) ! s), d' /= d ]
+
+eliminateDigit :: Maybe Board -> (Square, Digit) -> Maybe Board
+eliminateDigit Nothing _ = Nothing
+eliminateDigit (Just b) (s, d) =
+    let b' = b // [(s, S.delete d (b ! s))]
+    in Just b'
 
 -- Main --------------------------------------------------------------
 
@@ -72,7 +97,8 @@ main = do
   args <- getArgs
   forM_ args $ \a -> do
          puzzle <- readFile a
-         putStrLn $ oneline (givens puzzle)
+         -- putStrLn $ show $ givens puzzle
+         putStrLn $ oneline $ givensBoard $ givens puzzle
          putStrLn $ case solve (board puzzle) of
                       Nothing -> "No solution."
                       Just b -> oneline b
