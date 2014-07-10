@@ -1,6 +1,3 @@
-import Debug.Trace (trace)
-
-
 import Control.Applicative
 import Control.Monad
 import Data.List
@@ -37,49 +34,44 @@ peers = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 
 givens :: [Char] -> Givens
 givens text = [ (i, d) | (i, d) <- (zip [0..] (fromText text)), d `elem` digits ]
-
-givensBoard :: Givens -> Board
-givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
+    where fromText = filter (`elem` ('.':digits))
 
 board :: [Char] -> Maybe Board
 board text = foldl set (Just blankBoard) (givens text)
 
+givensBoard :: Givens -> Board
+givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
+
 oneline :: Board -> [Char]
-oneline = map unsquare . toList
+oneline = map squareText . toList
 
-square c = if c == '.' then Nothing else Just c
-unsquare s = if S.size s == 1 then (S.toList s) !! 0 else '.'
-
-fromText = filter (`elem` ('.':digits))
-
+squareText s = if S.size s == 1 then head (S.toList s) else '.'
 
 -- Solving code ------------------------------------------------------
 
-solve :: Maybe Board -> Maybe Board
-solve board = do
-  b <- board
-  case isEmptySquare b of
-    Nothing -> board
-    Just s  -> search b digits s
+solve b = case emptySquare b of
+            Nothing -> Just b
+            Just s  -> tryDigits b s digits
 
-search :: Board -> [Digit] -> Square -> Maybe Board
-search b digits s =
-    case digits of
-      d:ds ->
-          case assign b s d of
-            Nothing -> tryNextDigit
-            next    -> solve next <|> tryNextDigit
-          where tryNextDigit = search b ds s
-      [] -> Nothing
+emptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
 
-isEmptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
+tryDigits b s [] = Nothing
+tryDigits b s (d:ds) =
+    case assign b s d of
+      Nothing -> tryNextDigit
+      Just b' -> solve b' <|> tryNextDigit
+    where tryNextDigit = tryDigits b s ds
 
 assign b s d = set (Just b) (s, d)
 
 set b (s, d) = foldl eliminate b otherDigits
     where otherDigits = [ (s, d') | d' <- S.toList ((fromJust b) ! s), d' /= d ]
 
-eliminate mb (s, d) = mb >>= removeDigit s d >>= propagateAssignment s >>= propagateToOnlyPlace s d
+eliminate mb (s, d) =
+    mb                    >>=
+    removeDigit s d       >>=
+    propagateAssignment s >>=
+    propagateToOnlyPlace s d
 
 removeDigit s d b =
     if noDigits withoutD then Nothing else Just (b // [(s, withoutD)])
@@ -94,13 +86,14 @@ propagateAssignment s b
           eliminateFromPeers d = foldl eliminate (Just b) [ (p, d) | p <- peersWith d ]
           peersWith d = [ p | p <- (peers !! s), canTake b p d ]
 
-propagateToOnlyPlace s d b = foldl propagate (Just b) (units !! s)
-    where propagate Nothing _ = Nothing
-          propagate (Just b') u =
-              case places b' d u of
-                x:[] -> set (Just b') x
-                _    -> (Just b')
-          places b d u = [ (s, d) | s <- u, canTake b s d ]
+propagateToOnlyPlace s d b =
+    foldl propagate (Just b) (units !! s)
+        where propagate Nothing _ = Nothing
+              propagate (Just b') u =
+                  case places b' d u of
+                    x:[] -> set (Just b') x
+                    _    -> (Just b')
+              places b d u = [ (s, d) | s <- u, canTake b s d ]
 
 canTake b s d = S.member d (b ! s)
 
@@ -111,6 +104,8 @@ main = do
   forM_ args $ \a -> do
          puzzle <- readFile a
          putStrLn $ oneline $ givensBoard $ givens puzzle
-         putStrLn $ case solve (board puzzle) of
-                      Nothing -> "No solution."
-                      Just b -> oneline b
+         putStrLn $ case board puzzle of
+                      Nothing -> "Not a legal puzzle."
+                      Just p -> case solve p of
+                                  Nothing -> "No solution."
+                                  Just b -> oneline b
