@@ -39,8 +39,8 @@ givens text = [ (i, d) | (i, d) <- (zip [0..] (fromText text)), d `elem` digits 
 board :: [Char] -> Maybe Board
 board text = foldl set (Just blankBoard) (givens text)
 
-givensBoard :: Givens -> Board
-givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
+justGivens :: [Char] -> Board
+justGivens text = blankBoard // [ (i, S.singleton d) | (i, d) <- (givens text) ]
 
 grid :: Board -> [Char]
 grid b = intercalate divider [ band b i | i <- [0..2] ]
@@ -118,10 +118,15 @@ canTake b s d = S.member d (b ! s)
 main = do
   args <- getArgs
   forM_ args $ \a -> do
-         puzzle <- readFile a
-         putStrLn $ case board puzzle of
-                      Nothing -> "Not a legal puzzle."
-                      Just p -> case solve p of
-                                  Nothing -> "No solution."
-                                  Just b -> sideBySide (givensBoard (givens puzzle)) b
-         putStrLn ""
+         puzzles <- readFile a
+         forM_ (lines puzzles) $ \p -> do
+             putStrLn $ (showSolution p)
+             putStrLn ""
+
+showSolution puzzle =
+    case board puzzle of
+      Nothing -> bail "Not a legal puzzle."
+      Just p -> case solve p of
+                  Nothing -> bail "No solution."
+                  Just b -> sideBySide (justGivens puzzle) b
+    where bail msg = (grid (justGivens puzzle)) ++ "\n" ++ msg
