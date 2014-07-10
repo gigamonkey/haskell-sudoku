@@ -42,7 +42,7 @@ givensBoard :: Givens -> Board
 givensBoard gs = blankBoard // [ (i, S.singleton d) | (i, d) <- gs ]
 
 board :: [Char] -> Maybe Board
-board text = foldl setDigit (Just blankBoard) (givens text)
+board text = foldl set (Just blankBoard) (givens text)
 
 oneline :: Board -> [Char]
 oneline = map unsquare . toList
@@ -75,21 +75,44 @@ search b digits s =
 emptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
 
 assign :: Board -> Square -> Digit -> Maybe Board
-assign b s d = if inPeers b s d then Nothing else setDigit (Just b) (s, d)
+assign b s d = set (Just b) (s, d)
 
-inPeers b s d = any inPeer [ (b!p) | p <- (peers !! s) ]
-    where inPeer p = S.size p == 1 && S.member d p
-
-
-setDigit :: Maybe Board -> (Square, Digit) -> Maybe Board
-setDigit b (s, d) = foldl eliminateDigit b otherDigits
+set :: Maybe Board -> (Square, Digit) -> Maybe Board
+set b (s, d) = foldl eliminate b otherDigits
     where otherDigits = [ (s, d') | d' <- S.toList ((fromJust b) ! s), d' /= d ]
 
-eliminateDigit :: Maybe Board -> (Square, Digit) -> Maybe Board
-eliminateDigit Nothing _ = Nothing
-eliminateDigit (Just b) (s, d) =
-    let b' = b // [(s, S.delete d (b ! s))]
-    in Just b'
+eliminate :: Maybe Board -> (Square, Digit) -> Maybe Board
+eliminate mb (s, d) = do
+  b   <- mb
+  b'  <- removeDigit b s d
+  b'' <- propagateAssignment b' s
+  propagateToOnlyPlace b'' s d
+
+removeDigit :: Board -> Square -> Digit -> Maybe Board
+removeDigit b s d =
+    if noDigits withoutD then Nothing else Just (b // [(s, withoutD)])
+        where noDigits = S.null
+              withoutD = S.delete d (b ! s)
+
+propagateAssignment :: Board -> Square -> Maybe Board
+propagateAssignment b s
+    | oneDigit = eliminateFromPeers theDigit
+    | otherwise = Just b
+    where oneDigit = S.size (b ! s) == 1
+          theDigit = (S.toList (b ! s)) !! 0
+          eliminateFromPeers d = foldl eliminate (Just b) [ (p, d) | p <- peersWith d ]
+          peersWith d = [ p | p <- (peers !! s), canTake b p d ]
+
+propagateToOnlyPlace :: Board -> Square -> Digit -> Maybe Board
+propagateToOnlyPlace b s d = foldl propagate (Just b) (units !! s)
+    where propagate Nothing _ = Nothing
+          propagate (Just b') u =
+              case places b' d u of
+                x:[] -> set (Just b') x
+                _    -> (Just b')
+          places b d u = [ (s, d) | s <- u, canTake b s d ]
+
+canTake b s d = S.member d (b ! s)
 
 -- Main --------------------------------------------------------------
 
@@ -97,7 +120,6 @@ main = do
   args <- getArgs
   forM_ args $ \a -> do
          puzzle <- readFile a
-         -- putStrLn $ show $ givens puzzle
          putStrLn $ oneline $ givensBoard $ givens puzzle
          putStrLn $ case solve (board puzzle) of
                       Nothing -> "No solution."
