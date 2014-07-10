@@ -64,7 +64,7 @@ squareText s = if S.size s == 1 then head (S.toList s) else '.'
 
 solve b = case emptySquare b of
             Nothing -> Just b
-            Just s  -> tryDigits b s digits
+            Just s  -> tryDigits b s (S.toList (b ! s))
 
 emptySquare b =
     if (V.null nonEmpty) then Nothing else Just (fst (V.minimumBy setSize nonEmpty))
