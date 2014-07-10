@@ -54,7 +54,8 @@ oneline = map squareText . toList
 
 sideBySide :: Board -> Board -> [Char]
 sideBySide g b =
-    intercalate "\n" [ l1 ++ "          " ++ l2 | (l1, l2) <- zip (lines (grid g)) (lines (grid b)) ]
+    intercalate "\n" [ l1 ++ space ++ l2 | (l1, l2) <- zip (lines (grid g)) (lines (grid b)) ]
+        where space = replicate 10 ' '
 
 squareText :: S.Set Char -> Char
 squareText s = if S.size s == 1 then head (S.toList s) else '.'
@@ -65,7 +66,10 @@ solve b = case emptySquare b of
             Nothing -> Just b
             Just s  -> tryDigits b s digits
 
-emptySquare b = (V.map fst $ V.filter (\(i, s) -> S.size s > 1) $ indexed b) !? 0
+emptySquare b =
+    if (V.null nonEmpty) then Nothing else Just (fst (V.minimumBy setSize nonEmpty))
+        where nonEmpty = V.filter (\(i, s) -> S.size s > 1) $ indexed b
+              setSize (_, s1) (_, s2) = compare (S.size s1) (S.size s2)
 
 tryDigits b s [] = Nothing
 tryDigits b s (d:ds) =
