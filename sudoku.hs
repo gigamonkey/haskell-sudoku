@@ -2,7 +2,7 @@ import Control.Applicative
 import Control.Monad
 import Data.List
 import Data.Maybe
-import Data.Vector (Vector, indexed, fromList, toList, (//), (!?), (!))
+import Data.Vector ((//), (!))
 import System.Environment
 import System.IO
 
@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 type Square = Int
 type Digit  = Char
 type Givens = [(Square, Digit)]
-type Board  = Vector (S.Set Digit)
+type Board  = V.Vector (S.Set Digit)
 
 -- Some useful sets of indices ---------------------------------------
 
@@ -37,7 +37,8 @@ givens text = [ (i, d) | (i, d) <- (zip [0..] (fromText text)), d `elem` digits 
     where fromText = filter (`elem` ('.':digits))
 
 board :: [Char] -> Maybe Board
-board text = foldl set (Just blankBoard) (givens text)
+board text = foldl setter (Just blankBoard) (givens text)
+    where setter mb g = mb >>= (set g)
 
 justGivens :: [Char] -> Board
 justGivens text = blankBoard // [ (i, S.singleton d) | (i, d) <- (givens text) ]
@@ -53,12 +54,12 @@ grid b =
           divider    = "\n------+-------+------\n"
 
 oneline :: Board -> [Char]
-oneline = map squareText . toList
+oneline = map squareText . V.toList
 
 sideBySide :: Board -> Board -> [Char]
 sideBySide g b =
-    intercalate "\n" [ l1 ++ space ++ l2 | (l1, l2) <- zip (lines (grid g)) (lines (grid b)) ]
-        where space = replicate 10 ' '
+    intercalate "\n" $ map line $ zip (lines $ grid g) (lines $ grid b)
+        where line (l1, l2) = l1 ++ (replicate 10 ' ') ++ l2
 
 squareText :: S.Set Digit -> Char
 squareText s = if S.size s == 1 then head (S.toList s) else '.'
@@ -71,7 +72,8 @@ solve b = case emptySquare b of
 
 emptySquare b =
     if noEmpties then Nothing else Just fewestDigits
-        where empties      = V.filter (\(i, s) -> S.size s > 1) $ indexed b
+        where empties      = V.filter isEmpty $ V.indexed b
+              isEmpty      = (> 1) . S.size . snd
               noEmpties    = V.null empties
               fewestDigits = fst $ V.minimumBy setSize empties
               setSize a b  = compare (S.size $ snd a) (S.size $ snd b)
@@ -83,10 +85,10 @@ tryDigits b s (d:ds) =
       Just b' -> solve b' <|> tryNextDigit
     where tryNextDigit = tryDigits b s ds
 
-assign b s d = set (Just b) (s, d)
+assign b s d = set (s, d) b
 
-set b (s, d) = foldl eliminate b otherDigits
-    where otherDigits = [ (s, d') | d' <- S.toList ((fromJust b) ! s), d' /= d ]
+set (s, d) b = foldl eliminate (Just b) otherDigits
+    where otherDigits = [ (s, d') | d' <- S.toList (b ! s), d' /= d ]
 
 eliminate mb (s, d) =
     mb                    >>=
@@ -113,7 +115,7 @@ propagateToOnlyPlace s d b =
               propagate (Just b') u =
                   case places b' d u of
                     []   -> Nothing
-                    x:[] -> set (Just b') x
+                    x:[] -> set x b'
                     _    -> (Just b')
               places b d u = [ (s, d) | s <- u, canTake b s d ]
 
