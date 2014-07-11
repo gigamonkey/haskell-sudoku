@@ -43,11 +43,14 @@ justGivens :: [Char] -> Board
 justGivens text = blankBoard // [ (i, S.singleton d) | (i, d) <- (givens text) ]
 
 grid :: Board -> [Char]
-grid b = intercalate divider [ band b i | i <- [0..2] ]
-    where divider         = "\n------+-------+------\n"
-          band b i        = intercalate "\n" [ row b r | r <- [i*3..(i*3)+2] ]
-          row b r         = intercalate " | " [ row_chunk b r c | c <- [0, 3, 6] ]
-          row_chunk b r c = intercalate " " [ [squareText (b ! s)] | s <- (take 3 (drop c (rows !! r))) ]
+grid b =
+    intercalate divider $ map band $ group 3 $ group 9 $ squares
+    where squares    = map squareText $ V.toList b
+          group n xs = case xs of [] -> []; _ -> take n xs : (group n (drop n xs))
+          chunk c    = intersperse ' ' c
+          row r      = intercalate " | " $ map chunk $ group 3 r
+          band b     = intercalate "\n" $ map row b
+          divider    = "\n------+-------+------\n"
 
 oneline :: Board -> [Char]
 oneline = map squareText . toList
