@@ -126,8 +126,8 @@ main = do
   forM_ args $ \a -> do
          puzzles <- readFile a
          forM_ (lines puzzles) $ \p -> do
-             putStrLn $ (showSolution p)
-             putStrLn ""
+                       putStrLn $ (showSolution p)
+                       putStrLn ""
 
 showSolution puzzle =
     case board puzzle of
