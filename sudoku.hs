@@ -45,13 +45,12 @@ justGivens text = blankBoard // [ (i, S.singleton d) | (i, d) <- givens text ]
 
 grid :: Board -> String
 grid b =
-    intercalate divider $ map band $ group 3 $ group 9 squares
-    where squares    = map squareText $ V.toList b
-          group n xs = case xs of [] -> []; _ -> take n xs : group n (drop n xs)
-          chunk      = intersperse ' '
-          row r      = intercalate " | " $ map chunk $ group 3 r
-          band b     = intercalate "\n" $ map row b
-          divider    = "\n------+-------+------\n"
+    intercalate divider $ map band $ group 3 $ group 9 $ oneline b
+        where group n xs = case xs of [] -> []; _ -> take n xs : group n (drop n xs)
+              chunk      = intersperse ' '
+              row r      = intercalate " | " $ map chunk $ group 3 r
+              band b     = intercalate "\n" $ map row b
+              divider    = "\n------+-------+------\n"
 
 oneline :: Board -> String
 oneline = map squareText . V.toList
@@ -72,11 +71,11 @@ solve b = case emptySquare b of
 
 emptySquare b =
     if noEmpties then Nothing else Just fewestDigits
-        where empties      = V.filter isEmpty $ V.indexed b
-              isEmpty      = (> 1) . S.size . snd
-              noEmpties    = V.null empties
-              fewestDigits = fst $ V.minimumBy setSize empties
-              setSize a b  = compare (S.size $ snd a) (S.size $ snd b)
+        where empties       = V.filter isEmpty $ V.indexed b
+              isEmpty       = (> 1) . S.size . snd
+              noEmpties     = V.null empties
+              fewestDigits  = fst $ V.minimumBy numDigits empties
+              numDigits a b = compare (S.size $ snd a) (S.size $ snd b)
 
 tryDigits b s [] = Nothing
 tryDigits b s (d:ds) =
