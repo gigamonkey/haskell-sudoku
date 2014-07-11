@@ -8,6 +8,9 @@ all: $(binaries)
 test: sudoku
 	./sudoku $(TEST_PUZZLES)
 
+lint:
+	hlint $(source)
+
 clean: tidy
 	rm -f $(binaries)
 	rm -f *.hi
