@@ -87,10 +87,6 @@ tryDigits b s (d:ds) =
 
 assign b s d = set (s, d) b
 
-
-
-
-
 set (s, d) b = foldl eliminate (Just b) otherDigits
     where otherDigits = [ (s, d') | d' <- S.toList (b ! s), d' /= d ]
 
