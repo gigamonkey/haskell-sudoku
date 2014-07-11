@@ -92,9 +92,9 @@ eliminate mb (s, d) =
     propagateToOnlyPlace s d
 
 removeDigit s d b =
-    if noDigits withoutD then Nothing else Just (b // [(s, withoutD)])
-        where noDigits = S.null
-              withoutD = S.delete d (b ! s)
+    if wasLastDigit then Nothing else Just (b // [(s, newDigits)])
+        where newDigits = S.delete d (b ! s)
+              wasLastDigit = S.null newDigits
 
 propagateAssignment s b
     | oneDigit = eliminateFromPeers theDigit
@@ -109,6 +109,7 @@ propagateToOnlyPlace s d b =
         where propagate Nothing _ = Nothing
               propagate (Just b') u =
                   case places b' d u of
+                    []   -> Nothing
                     x:[] -> set (Just b') x
                     _    -> (Just b')
               places b d u = [ (s, d) | s <- u, canTake b s d ]
