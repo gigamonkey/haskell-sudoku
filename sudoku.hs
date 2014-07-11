@@ -14,7 +14,7 @@ type Digit  = Char
 type Givens = [(Square, Digit)]
 type Board  = V.Vector (S.Set Digit)
 
--- Some useful sets of indices ---------------------------------------
+-- Some useful data --------------------------------------------------
 
 digits  = "123456789"
 squares = [0..80]
