@@ -1,10 +1,12 @@
 source = $(wildcard *.hs)
 binaries = $(basename $(source))
 
+TEST_PUZZLES := one.txt
+
 all: $(binaries)
 
 test: sudoku
-	./sudoku *.txt
+	./sudoku $(TEST_PUZZLES)
 
 clean: tidy
 	rm -f $(binaries)
