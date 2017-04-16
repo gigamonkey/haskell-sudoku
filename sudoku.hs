@@ -33,7 +33,7 @@ peers = [ delete s (foldl union [] (units !! s)) | s <- squares ]
 -- To and from textual representation --------------------------------
 
 givens :: String -> Givens
-givens text = [ (i, d) | (i, d) <- zip [0..] (fromText text), d `elem` digits ]
+givens text = [ (i, d) | (i, d) <- zip squares (fromText text), d `elem` digits ]
     where fromText = filter (`elem` ('.':digits))
 
 board :: String -> Maybe Board
@@ -97,7 +97,7 @@ eliminate mb (s, d) =
 
 removeDigit s d b =
     if wasLastDigit then Nothing else Just (b // [(s, newDigits)])
-        where newDigits = S.delete d (b ! s)
+        where newDigits    = S.delete d (b ! s)
               wasLastDigit = S.null newDigits
 
 propagateAssignment s b
@@ -122,6 +122,7 @@ canTake b s d = S.member d (b ! s)
 
 -- Main --------------------------------------------------------------
 
+main :: IO ()
 main = do
   args <- getArgs
   forM_ args $ \a -> do
